@@ -2,7 +2,7 @@ import logging
 import re
 import uuid
 
-from sqlalchemy.sql import update,and_, bindparam
+from sqlalchemy.sql import update, and_, bindparam
 from sqlalchemy.exc import InvalidRequestError
 
 from ckan import plugins as p
@@ -11,11 +11,11 @@ from ckan.model import Session, Package
 from ckan.logic import ValidationError, NotFound, get_action
 
 from ckan.logic.schema import default_create_package_schema
-from ckan.lib.navl.validators import ignore_missing,ignore
-from ckan.lib.munge import munge_title_to_name,substitute_ascii_equivalents
+from ckan.lib.navl.validators import ignore_missing, ignore
+from ckan.lib.munge import munge_title_to_name, substitute_ascii_equivalents
 
 from ckanext.harvestodm.model import HarvestJob, HarvestObject, HarvestGatherError, \
-                                    HarvestObjectError
+    HarvestObjectError
 
 from ckan.plugins.core import SingletonPlugin, implements
 from ckanext.harvestodm.interfaces import IHarvester
@@ -54,7 +54,6 @@ class HarvesterBase(SingletonPlugin):
         else:
             return name
 
-
     def _save_gather_error(self, message, job):
         err = HarvestGatherError(message=message, job=job)
         try:
@@ -65,7 +64,6 @@ class HarvesterBase(SingletonPlugin):
         finally:
             log.error(message)
 
-
     def _save_object_error(self, message, obj, stage=u'Fetch', line=None):
         err = HarvestObjectError(message=message,
                                  object=obj,
@@ -73,13 +71,13 @@ class HarvesterBase(SingletonPlugin):
                                  line=line)
         try:
             err.save()
-        except InvalidRequestError, e:
+        except InvalidRequestError as e:
             Session.rollback()
             err.save()
         finally:
-            log_message = '{0}, line {1}'.format(message,line) if line else message
+            log_message = '{0}, line {1}'.format(
+                message, line) if line else message
             log.debug(log_message)
-
 
     def _create_harvest_objects(self, remote_ids, harvest_job):
         '''
@@ -93,15 +91,15 @@ class HarvesterBase(SingletonPlugin):
             if len(remote_ids):
                 for remote_id in remote_ids:
                     # Create a new HarvestObject for this identifier
-                    obj = HarvestObject(guid = remote_id, job = harvest_job)
+                    obj = HarvestObject(guid=remote_id, job=harvest_job)
                     obj.save()
                     object_ids.append(obj.id)
                 return object_ids
             else:
-               self._save_gather_error('No remote datasets could be identified', harvest_job)
-        except Exception, e:
+                self._save_gather_error(
+                    'No remote datasets could be identified', harvest_job)
+        except Exception as e:
             self._save_gather_error('%r' % e.message, harvest_job)
-
 
     def _create_or_update_package(self, package_dict, harvest_object):
         '''
@@ -136,7 +134,7 @@ class HarvesterBase(SingletonPlugin):
                 except ValueError:
                     raise ValueError('api_version must be an integer')
 
-                #TODO: use site user when available
+                # TODO: use site user when available
                 user_name = self.config.get('user', u'harvest')
             else:
                 api_version = 2
@@ -161,31 +159,39 @@ class HarvesterBase(SingletonPlugin):
             data_dict = {}
             data_dict['id'] = package_dict['id']
             try:
-                existing_package_dict = get_action('package_show')(context, data_dict)
+                existing_package_dict = get_action(
+                    'package_show')(context, data_dict)
 
-                # In case name has been modified when first importing. See issue #101.
+                # In case name has been modified when first importing. See
+                # issue #101.
                 package_dict['name'] = existing_package_dict['name']
 
                 # Check modified date
-                if not 'metadata_modified' in package_dict or \
-                   package_dict['metadata_modified'] > existing_package_dict.get('metadata_modified'):
-                    log.info('Package with GUID %s exists and needs to be updated' % harvest_object.guid)
+                if not 'metadata_modified' in package_dict or package_dict[
+                        'metadata_modified'] > existing_package_dict.get('metadata_modified'):
+                    log.info(
+                        'Package with GUID %s exists and needs to be updated' %
+                        harvest_object.guid)
                     # Update package
-                    context.update({'id':package_dict['id']})
+                    context.update({'id': package_dict['id']})
                     package_dict.setdefault('name',
-                            existing_package_dict['name'])
-                    new_package = get_action('package_update_rest')(context, package_dict)
+                                            existing_package_dict['name'])
+                    new_package = get_action('package_update_rest')(
+                        context, package_dict)
 
                 else:
-                    log.info('Package with GUID %s not updated, skipping...' % harvest_object.guid)
+                    log.info(
+                        'Package with GUID %s not updated, skipping...' %
+                        harvest_object.guid)
                     return
 
-                # Flag the other objects linking to this package as not current anymore
+                # Flag the other objects linking to this package as not current
+                # anymore
                 from ckanext.harvestodm.model import harvest_object_table
                 conn = Session.connection()
-                u = update(harvest_object_table) \
-                        .where(harvest_object_table.c.package_id==bindparam('b_package_id')) \
-                        .values(current=False)
+                u = update(harvest_object_table) .where(
+                    harvest_object_table.c.package_id == bindparam('b_package_id')) .values(
+                    current=False)
                 conn.execute(u, b_package_id=new_package['id'])
 
                 # Flag this as the current harvest object
@@ -202,9 +208,13 @@ class HarvesterBase(SingletonPlugin):
                 context.pop('__auth_audit', None)
 
                 # Set name if not already there
-                package_dict.setdefault('name', self._gen_new_name(package_dict['title']))
+                package_dict.setdefault(
+                    'name', self._gen_new_name(
+                        package_dict['title']))
 
-                log.info('Package with GUID %s does not exist, let\'s create it' % harvest_object.guid)
+                log.info(
+                    'Package with GUID %s does not exist, let\'s create it' %
+                    harvest_object.guid)
                 harvest_object.current = True
                 harvest_object.package_id = package_dict['id']
                 # Defer constraints and flush so the dataset can be indexed with
@@ -212,20 +222,24 @@ class HarvesterBase(SingletonPlugin):
                 # plugin)
                 harvest_object.add()
 
-                model.Session.execute('SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED')
+                model.Session.execute(
+                    'SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED')
                 model.Session.flush()
 
-                new_package = get_action('package_create_rest')(context, package_dict)
+                new_package = get_action('package_create_rest')(
+                    context, package_dict)
 
             Session.commit()
 
             return True
 
-        except ValidationError,e:
+        except ValidationError as e:
             log.exception(e)
-            self._save_object_error('Invalid package with GUID %s: %r'%(harvest_object.guid,e.error_dict),harvest_object,'Import')
-        except Exception, e:
+            self._save_object_error(
+                'Invalid package with GUID %s: %r' %
+                (harvest_object.guid, e.error_dict), harvest_object, 'Import')
+        except Exception as e:
             log.exception(e)
-            self._save_object_error('%r'%e,harvest_object,'Import')
+            self._save_object_error('%r' % e, harvest_object, 'Import')
 
         return None

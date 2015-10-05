@@ -1,11 +1,13 @@
 import factory
 from ckanext.harvestodm.model import HarvestSource, HarvestJob
 
+
 class HarvestSourceFactory(factory.Factory):
     FACTORY_FOR = HarvestSource
 
     url = "http://harvest.test.com"
     type = "test-harvest-source"
+
 
 class HarvestJobFactory(factory.Factory):
     FACTORY_FOR = HarvestJob

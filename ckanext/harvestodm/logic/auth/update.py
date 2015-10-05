@@ -24,8 +24,12 @@ def harvest_source_update(context, data_dict):
         pt.check_access('package_update', context, data_dict)
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to update harvest source {1}').format(user, source_id)}
+        msg = pt._('User {0} not authorized to update harvest source {1}')\
+            .format(user, source_id)
+        return {
+            'success': False,
+            'msg': msg}
+
 
 def harvest_source_clear(context, data_dict):
     '''
@@ -35,6 +39,7 @@ def harvest_source_clear(context, data_dict):
     '''
     return harvest_source_update(context, data_dict)
 
+
 def harvest_objects_import(context, data_dict):
     '''
         Authorization check reimporting all harvest objects
@@ -42,7 +47,8 @@ def harvest_objects_import(context, data_dict):
         Only sysadmins can do it
     '''
     if not user_is_sysadmin(context):
-        return {'success': False, 'msg': pt._('Only sysadmins can reimport all harvest objects')}
+        return {'success': False, 'msg': pt._(
+            'Only sysadmins can reimport all harvest objects')}
     else:
         return {'success': True}
 
@@ -54,9 +60,11 @@ def harvest_jobs_run(context, data_dict):
         Only sysadmins can do it
     '''
     if not user_is_sysadmin(context):
-        return {'success': False, 'msg': pt._('Only sysadmins can run the pending harvest jobs')}
+        return {'success': False, 'msg': pt._(
+            'Only sysadmins can run the pending harvest jobs')}
     else:
         return {'success': True}
+
 
 def harvest_sources_reindex(context, data_dict):
     '''
@@ -65,9 +73,11 @@ def harvest_sources_reindex(context, data_dict):
         Only sysadmins can do it
     '''
     if not user_is_sysadmin(context):
-        return {'success': False, 'msg': pt._('Only sysadmins can reindex all harvest sources')}
+        return {'success': False, 'msg': pt._(
+            'Only sysadmins can reindex all harvest sources')}
     else:
         return {'success': True}
+
 
 def harvest_source_reindex(context, data_dict):
     '''

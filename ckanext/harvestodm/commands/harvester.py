@@ -6,6 +6,7 @@ from ckan.logic import get_action, ValidationError
 
 from ckan.lib.cli import CkanCommand
 
+
 class Harvester(CkanCommand):
     '''Harvests remotely mastered metadata
 
@@ -75,22 +76,34 @@ class Harvester(CkanCommand):
     max_args = 9
     min_args = 0
 
-    def __init__(self,name):
+    def __init__(self, name):
 
-        super(Harvester,self).__init__(name)
+        super(Harvester, self).__init__(name)
 
-        self.parser.add_option('-j', '--no-join-datasets', dest='no_join_datasets',
-            action='store_true', default=False, help='Do not join harvest objects to existing datasets')
+        self.parser.add_option(
+            '-j',
+            '--no-join-datasets',
+            dest='no_join_datasets',
+            action='store_true',
+            default=False,
+            help='Do not join harvest objects to existing datasets')
 
-        self.parser.add_option('-o', '--harvest-object-id', dest='harvest_object_id',
-            default=False, help='Id of the harvest object to which perfom the import stage')
+        self.parser.add_option(
+            '-o',
+            '--harvest-object-id',
+            dest='harvest_object_id',
+            default=False,
+            help='Id of the harvest object to which perfom the import stage')
 
-        self.parser.add_option('-p', '--package-id', dest='package_id',
-            default=False, help='Id of the package whose harvest object to perfom the import stage for')
+        self.parser.add_option(
+            '-p',
+            '--package-id',
+            dest='package_id',
+            default=False,
+            help='Id of the package whose harvest object to perfom the import stage for')
 
         self.parser.add_option('--segments', dest='segments',
-            default=False, help=
-'''A string containing hex digits that represent which of
+                               default=False, help='''A string containing hex digits that represent which of
  the 16 harvest object segments to import. e.g. 15af will run segments 1,5,a,f''')
 
     def command(self):
@@ -98,9 +111,11 @@ class Harvester(CkanCommand):
 
         # We'll need a sysadmin user to perform most of the actions
         # We will use the sysadmin site user (named as the site_id)
-        context = {'model':model,'session':model.Session,'ignore_auth':True}
-        self.admin_user = get_action('get_site_user')(context,{})
-
+        context = {
+            'model': model,
+            'session': model.Session,
+            'ignore_auth': True}
+        self.admin_user = get_action('get_site_user')(context, {})
 
         print ''
 
@@ -125,15 +140,17 @@ class Harvester(CkanCommand):
             from ckanext.harvestodm.queue import get_gather_consumer, gather_callback
             logging.getLogger('amqplib').setLevel(logging.INFO)
             consumer = get_gather_consumer()
-            for method, header, body in consumer.consume(queue='ckan.harvest.gather'):
+            for method, header, body in consumer.consume(
+                    queue='ckan.harvest.gather'):
                 gather_callback(consumer, method, header, body)
         elif cmd == 'fetch_consumer':
             import logging
             logging.getLogger('amqplib').setLevel(logging.INFO)
             from ckanext.harvestodm.queue import get_fetch_consumer, fetch_callback
             consumer = get_fetch_consumer()
-            for method, header, body in consumer.consume(queue='ckan.harvest.fetch'):
-               fetch_callback(consumer, method, header, body)
+            for method, header, body in consumer.consume(
+                    queue='ckan.harvest.fetch'):
+                fetch_callback(consumer, method, header, body)
         elif cmd == 'purge_queues':
             from ckanext.harvestodm.queue import purge_queues
             purge_queues()
@@ -184,8 +201,8 @@ class Harvester(CkanCommand):
         else:
             title = None
         if len(self.args) >= 6:
-            active = not(self.args[5].lower() == 'false' or \
-                    self.args[5] == '0')
+            active = not(self.args[5].lower() == 'false' or
+                         self.args[5] == '0')
         else:
             active = True
         if len(self.args) >= 7:
@@ -205,38 +222,39 @@ class Harvester(CkanCommand):
 
         try:
             data_dict = {
-                    'name': name,
-                    'url': url,
-                    'source_type': type,
-                    'title': title,
-                    'active':active,
-                    'owner_org': owner_org,
-                    'frequency': frequency,
-                    'config': config,
-                    }
+                'name': name,
+                'url': url,
+                'source_type': type,
+                'title': title,
+                'active': active,
+                'owner_org': owner_org,
+                'frequency': frequency,
+                'config': config,
+            }
 
             context = {
-                'model':model,
-                'session':model.Session,
+                'model': model,
+                'session': model.Session,
                 'user': self.admin_user['name'],
                 'ignore_auth': True,
             }
-            source = get_action('harvest_source_create')(context,data_dict)
+            source = get_action('harvest_source_create')(context, data_dict)
             print 'Created new harvest source:'
             self.print_harvest_source(source)
 
-            sources = get_action('harvest_source_list')(context,{})
+            sources = get_action('harvest_source_list')(context, {})
             self.print_there_are('harvest source', sources)
 
             # Create a harvest job for the new source if not regular job.
             if not data_dict['frequency']:
-                get_action('harvest_job_create')(context,{'source_id':source['id']})
+                get_action('harvest_job_create')(
+                    context, {'source_id': source['id']})
                 print 'A new Harvest Job for this source has also been created'
 
-        except ValidationError,e:
-           print 'An error occurred:'
-           print str(e.error_dict)
-           raise e
+        except ValidationError as e:
+            print 'An error occurred:'
+            print str(e.error_dict)
+            raise e
 
     def remove_harvest_source(self):
         if len(self.args) >= 2:
@@ -244,8 +262,11 @@ class Harvester(CkanCommand):
         else:
             print 'Please provide a source id'
             sys.exit(1)
-        context = {'model': model, 'user': self.admin_user['name'], 'session':model.Session}
-        get_action('harvest_source_delete')(context,{'id':source_id})
+        context = {
+            'model': model,
+            'user': self.admin_user['name'],
+            'session': model.Session}
+        get_action('harvest_source_delete')(context, {'id': source_id})
         print 'Removed harvest source: %s' % source_id
 
     def list_harvest_sources(self):
@@ -253,11 +274,14 @@ class Harvester(CkanCommand):
             data_dict = {}
             what = 'harvest source'
         else:
-            data_dict = {'only_active':True}
+            data_dict = {'only_active': True}
             what = 'active harvest source'
 
-        context = {'model': model,'session':model.Session, 'user': self.admin_user['name']}
-        sources = get_action('harvest_source_list')(context,data_dict)
+        context = {
+            'model': model,
+            'session': model.Session,
+            'user': self.admin_user['name']}
+        sources = get_action('harvest_source_list')(context, data_dict)
         self.print_harvest_sources(sources)
         self.print_there_are(what=what, sequence=sources)
 
@@ -268,25 +292,35 @@ class Harvester(CkanCommand):
             print 'Please provide a source id'
             sys.exit(1)
 
-        context = {'model': model,'session':model.Session, 'user': self.admin_user['name']}
-        job = get_action('harvest_job_create')(context,{'source_id':source_id})
+        context = {
+            'model': model,
+            'session': model.Session,
+            'user': self.admin_user['name']}
+        job = get_action('harvest_job_create')(
+            context, {'source_id': source_id})
 
         self.print_harvest_job(job)
-        jobs = get_action('harvest_job_list')(context,{'status':u'New'})
+        jobs = get_action('harvest_job_list')(context, {'status': u'New'})
         self.print_there_are('harvest job', jobs, condition=u'New')
 
     def list_harvest_jobs(self):
-        context = {'model': model, 'user': self.admin_user['name'], 'session':model.Session}
-        jobs = get_action('harvest_job_list')(context,{})
+        context = {
+            'model': model,
+            'user': self.admin_user['name'],
+            'session': model.Session}
+        jobs = get_action('harvest_job_list')(context, {})
 
         self.print_harvest_jobs(jobs)
         self.print_there_are(what='harvest job', sequence=jobs)
 
     def run_harvester(self):
-        context = {'model': model, 'user': self.admin_user['name'], 'session':model.Session}
-        jobs = get_action('harvest_jobs_run')(context,{})
+        context = {
+            'model': model,
+            'user': self.admin_user['name'],
+            'session': model.Session}
+        jobs = get_action('harvest_jobs_run')(context, {})
 
-        #print 'Sent %s jobs to the gather queue' % len(jobs)
+        # print 'Sent %s jobs to the gather queue' % len(jobs)
 
     def import_stage(self):
 
@@ -295,28 +329,32 @@ class Harvester(CkanCommand):
         else:
             source_id = None
 
-        context = {'model': model, 'session':model.Session, 'user': self.admin_user['name'],
-                   'join_datasets': not self.options.no_join_datasets,
-                   'segments': self.options.segments}
+        context = {
+            'model': model,
+            'session': model.Session,
+            'user': self.admin_user['name'],
+            'join_datasets': not self.options.no_join_datasets,
+            'segments': self.options.segments}
 
-
-        objs_count = get_action('harvest_objects_import')(context,{
-                'source_id': source_id,
-                'harvest_object_id': self.options.harvest_object_id,
-                'package_id': self.options.package_id,
-                })
+        objs_count = get_action('harvest_objects_import')(context, {
+            'source_id': source_id,
+            'harvest_object_id': self.options.harvest_object_id,
+            'package_id': self.options.package_id,
+        })
 
         print '%s objects reimported' % objs_count
 
     def create_harvest_job_all(self):
-        context = {'model': model, 'user': self.admin_user['name'], 'session':model.Session}
-        jobs = get_action('harvest_job_create_all')(context,{})
+        context = {
+            'model': model,
+            'user': self.admin_user['name'],
+            'session': model.Session}
+        jobs = get_action('harvest_job_create_all')(context, {})
         print 'Created %s new harvest jobs' % len(jobs)
 
     def reindex(self):
         context = {'model': model, 'user': self.admin_user['name']}
-        get_action('harvest_sources_reindex')(context,{})
-
+        get_action('harvest_sources_reindex')(context, {})
 
     def print_harvest_sources(self, sources):
         if sources:
@@ -363,4 +401,3 @@ class Harvester(CkanCommand):
 
     def is_singular(self, sequence):
         return len(sequence) == 1
-

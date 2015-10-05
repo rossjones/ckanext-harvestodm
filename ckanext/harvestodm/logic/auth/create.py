@@ -15,8 +15,8 @@ def harvest_source_create(context, data_dict):
         pt.check_access('package_create', context, data_dict)
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to create harvest sources').format(user)}
+        return {'success': False, 'msg': pt._(
+            'User {0} not authorized to create harvest sources').format(user)}
 
 
 def harvest_job_create(context, data_dict):
@@ -38,8 +38,10 @@ def harvest_job_create(context, data_dict):
         pt.check_access('package_update', context, data_dict)
         return {'success': True}
     except pt.NotAuthorized:
+        msg = pt._('User not authorized to create a job for source {0}')\
+            .format(source_id)
         return {'success': False,
-                'msg': pt._('User not authorized to create a job for source {0}').format(source_id)}
+                'msg': msg}
 
 
 def harvest_job_create_all(context, data_dict):
@@ -49,9 +51,11 @@ def harvest_job_create_all(context, data_dict):
         Only sysadmins can do it
     '''
     if not user_is_sysadmin(context):
-        return {'success': False, 'msg': pt._('Only sysadmins can create harvest jobs for all sources')}
+        return {'success': False, 'msg': pt._(
+            'Only sysadmins can create harvest jobs for all sources')}
     else:
         return {'success': True}
+
 
 def harvest_object_create(context, data_dict):
     """
@@ -59,6 +63,7 @@ def harvest_object_create(context, data_dict):
 
         only the sysadmins can create harvest objects
     """
-    # sysadmins can run all actions if we've got to this point we're not a sysadmin
-    return {'success': False, 'msg': pt._('Only the sysadmins can create harvest objects')}
-
+    # sysadmins can run all actions if we've got to this point we're not a
+    # sysadmin
+    return {'success': False, 'msg': pt._(
+        'Only the sysadmins can create harvest objects')}

@@ -23,5 +23,6 @@ def harvest_source_delete(context, data_dict):
         pt.check_access('package_delete', context, data_dict)
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to delete harvest source {1}').format(user, source_id)}
+        msg = pt._('User {0} not authorized to delete harvest source {1}')\
+            .format(user, source_id)
+        return {'success': False, 'msg': msg}

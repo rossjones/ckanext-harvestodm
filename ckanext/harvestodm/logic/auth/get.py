@@ -3,7 +3,6 @@ from ckan.plugins import toolkit as pt
 from ckanext.harvestodm.logic.auth import get_job_object
 
 
-
 def auth_allow_anonymous_access(auth_function):
     '''
         Local version of the auth_allow_anonymous_access decorator that only
@@ -38,9 +37,13 @@ def harvest_source_show(context, data_dict):
         pt.check_access('package_show', context, data_dict)
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to read harvest source {1}')
-                .format(user, source_id)}
+        msg = pt._('User {0} not authorized to read harvest source {1}')\
+            .format(user, source_id)
+        return {
+            'success': False,
+            'msg': msg
+        }
+
 
 @auth_allow_anonymous_access
 def harvest_source_show_status(context, data_dict):
@@ -50,6 +53,7 @@ def harvest_source_show_status(context, data_dict):
         It forwards the checks to harvest_source_show.
     '''
     return harvest_source_show(context, data_dict)
+
 
 @auth_allow_anonymous_access
 def harvest_source_list(context, data_dict):
@@ -78,9 +82,11 @@ def harvest_job_show(context, data_dict):
                         {'id': job.source.id})
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to see jobs from source {1}')
-                .format(user, job.source.id)}
+        msg = pt._('User {0} not authorized to see jobs from source {1}')\
+            .format(user, job.source.id)
+        return {
+            'success': False,
+            'msg': msg}
 
 
 def harvest_job_list(context, data_dict):
@@ -100,10 +106,11 @@ def harvest_job_list(context, data_dict):
                         {'id': source_id})
         return {'success': True}
     except pt.NotAuthorized:
-        return {'success': False,
-                'msg': pt._('User {0} not authorized to list jobs for source {1}')
-                .format(user, source_id)}
-
+        msg = pt._('User {0} not authorized to list jobs for source {1}')\
+            .format(user, source_id)
+        return {
+            'success': False,
+            'msg': msg}
 
 
 @auth_allow_anonymous_access

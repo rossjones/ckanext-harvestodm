@@ -5,7 +5,7 @@ from ckan.model import Session, Package
 from ckan.logic import ValidationError, NotFound, get_action
 from ckan.lib.helpers import json
 from ckanext.harvestodm.model import HarvestJob, HarvestObject, HarvestGatherError, \
-                                    HarvestObjectError
+    HarvestObjectError
 import pymongo
 import json
 import urllib2
@@ -16,25 +16,24 @@ import datetime
 from base import HarvesterBase
 import configparser
 
-##read from development.ini file all the required parameters
+# read from development.ini file all the required parameters
 config = configparser.ConfigParser()
 config.read('/var/local/ckan/default/pyenv/src/ckan/development.ini')
-log_path=config['ckan:odm_extensions']['log_path']
-ckan_harvester_error_log=str(log_path)+'ckan/Errorlog.txt'
-mongoclient=config['ckan:odm_extensions']['mongoclient']
-mongoport=config['ckan:odm_extensions']['mongoport']
+log_path = config['ckan:odm_extensions']['log_path']
+ckan_harvester_error_log = str(log_path) + 'ckan/Errorlog.txt'
+mongoclient = config['ckan:odm_extensions']['mongoclient']
+mongoport = config['ckan:odm_extensions']['mongoport']
 
-client=pymongo.MongoClient(str(mongoclient), int(mongoport))
-db=client.odm
-odm=db.odm
+client = pymongo.MongoClient(str(mongoclient), int(mongoport))
+db = client.odm
+odm = db.odm
 #document=odm.aggregate([{ "$group" :{"_id" : "$id", "elements" : { "$sum" : 1}}},{"$match": {"elements": {"$gt":0}}},{"$sort":{"elements":-1}}])
-#j=0
-#ids=[]
-#while j<len(document['result']):
-  #ids.append(document['result'][j]['_id'])
-  #j+=1
-#print(len(ids))
-
+# j=0
+# ids=[]
+# while j<len(document['result']):
+# ids.append(document['result'][j]['_id'])
+# j+=1
+# print(len(ids))
 
 
 class CKANHarvester(HarvesterBase):
@@ -51,15 +50,14 @@ class CKANHarvester(HarvesterBase):
     def _get_search_api_offset(self):
         return '/api/%d/search' % self.api_version
 
-
     def _get_content(self, url):
         http_request = urllib2.Request(
-            url = url,
+            url=url,
         )
 
-        api_key = self.config.get('api_key',None)
+        api_key = self.config.get('api_key', None)
         if api_key:
-            http_request.add_header('Authorization',api_key)
+            http_request.add_header('Authorization', api_key)
         http_response = urllib2.urlopen(http_request)
 
         return http_response.read()
@@ -69,10 +67,10 @@ class CKANHarvester(HarvesterBase):
         try:
             content = self._get_content(url)
             return json.loads(content)
-        except Exception, e:
+        except Exception as e:
             raise e
 
-    def _set_config(self,config_str):
+    def _set_config(self, config_str):
         if config_str:
             self.config = json.loads(config_str)
             if 'api_version' in self.config:
@@ -87,10 +85,10 @@ class CKANHarvester(HarvesterBase):
             'name': 'ckan',
             'title': 'CKAN',
             'description': 'Harvests remote CKAN instances',
-            'form_config_interface':'Text'
+            'form_config_interface': 'Text'
         }
 
-    def validate_config(self,config):
+    def validate_config(self, config):
         if not config:
             return config
         try:
@@ -103,46 +101,49 @@ class CKANHarvester(HarvesterBase):
                     raise ValueError('api_version must be an integer')
 
             if 'default_tags' in config_obj:
-                if not isinstance(config_obj['default_tags'],list):
+                if not isinstance(config_obj['default_tags'], list):
                     raise ValueError('default_tags must be a list')
 
             if 'default_groups' in config_obj:
-                if not isinstance(config_obj['default_groups'],list):
+                if not isinstance(config_obj['default_groups'], list):
                     raise ValueError('default_groups must be a list')
 
                 # Check if default groups exist
-                context = {'model':model,'user':c.user}
+                context = {'model': model, 'user': c.user}
                 for group_name in config_obj['default_groups']:
                     try:
-                        group = get_action('group_show')(context,{'id':group_name})
-                    except NotFound,e:
+                        group = get_action('group_show')(
+                            context, {'id': group_name})
+                    except NotFound as e:
                         raise ValueError('Default group not found')
 
             if 'default_extras' in config_obj:
-                if not isinstance(config_obj['default_extras'],dict):
+                if not isinstance(config_obj['default_extras'], dict):
                     raise ValueError('default_extras must be a dictionary')
 
             if 'user' in config_obj:
                 # Check if user exists
-                context = {'model':model,'user':c.user}
+                context = {'model': model, 'user': c.user}
                 try:
-                    user = get_action('user_show')(context,{'id':config_obj.get('user')})
-                except NotFound,e:
+                    user = get_action('user_show')(
+                        context, {'id': config_obj.get('user')})
+                except NotFound as e:
                     raise ValueError('User not found')
 
-            for key in ('read_only','force_all'):
+            for key in ('read_only', 'force_all'):
                 if key in config_obj:
-                    if not isinstance(config_obj[key],bool):
+                    if not isinstance(config_obj[key], bool):
                         raise ValueError('%s must be boolean' % key)
 
-        except ValueError,e:
+        except ValueError as e:
             raise e
 
         return config
 
-
-    def gather_stage(self,harvest_job):
-        log.debug('In CKANHarvester gather_stage (%s)' % harvest_job.source.url)
+    def gather_stage(self, harvest_job):
+        log.debug(
+            'In CKANHarvester gather_stage (%s)' %
+            harvest_job.source.url)
         get_all_packages = True
         package_ids = []
 
@@ -150,66 +151,67 @@ class CKANHarvester(HarvesterBase):
 
         # Check if this source has been harvested before
         previous_job = Session.query(HarvestJob) \
-                        .filter(HarvestJob.source==harvest_job.source) \
-                        .filter(HarvestJob.gather_finished!=None) \
-                        .filter(HarvestJob.id!=harvest_job.id) \
-                        .order_by(HarvestJob.gather_finished.desc()) \
-                        .limit(1).first()
+            .filter(HarvestJob.source == harvest_job.source) \
+            .filter(HarvestJob.gather_finished is not None) \
+            .filter(HarvestJob.id != harvest_job.id) \
+            .order_by(HarvestJob.gather_finished.desc()) \
+            .limit(1).first()
 
         # Get source URL
         base_url = harvest_job.source.url.rstrip('/')
         base_rest_url = base_url + self._get_rest_api_offset()
         base_search_url = base_url + self._get_search_api_offset()
 
-        if (previous_job and not previous_job.gather_errors and not len(previous_job.objects) == 0):
+        if (previous_job and not previous_job.gather_errors and not len(
+                previous_job.objects) == 0):
             print('previous job found')
-            if not self.config.get('force_all',False):
+            if not self.config.get('force_all', False):
                 get_all_packages = True
 
                 # Request only the packages modified since last harvest job
                 #last_time = previous_job.gather_finished.isoformat()
                 #url = base_search_url + '/revision?since_time=%s' % last_time
 
-                #try:
-                 #   content = self._get_content(url)
+                # try:
+                #   content = self._get_content(url)
 
-                  #  revision_ids = json.loads(content)
-                   # if len(revision_ids):
-                    #    for revision_id in revision_ids:
-                     #       url = base_rest_url + '/revision/%s' % revision_id
-                      #      try:
-                       #         content = self._get_content(url)
-                        #    except Exception,e:
-                         #       self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
-                          #      continue
+                #  revision_ids = json.loads(content)
+                # if len(revision_ids):
+                #    for revision_id in revision_ids:
+                #       url = base_rest_url + '/revision/%s' % revision_id
+                #      try:
+                #         content = self._get_content(url)
+                #    except Exception,e:
+                #       self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
+                #      continue
 
-                           # revision = json.loads(content)
-                            #for package_id in revision['packages']:
-                             #   if not package_id in package_ids:
-                              #      package_ids.append(package_id)
-                    #else:
-                     #   log.info('No packages have been updated on the remote CKAN instance since the last harvest job')
-                      #  return None
+                # revision = json.loads(content)
+                # for package_id in revision['packages']:
+                #   if not package_id in package_ids:
+                #      package_ids.append(package_id)
+                # else:
+                #   log.info('No packages have been updated on the remote CKAN instance since the last harvest job')
+                #  return None
 
-                #except urllib2.HTTPError,e:
-                 #   if e.getcode() == 400:
-                  #      log.info('CKAN instance %s does not suport revision filtering' % base_url)
-                   #     get_all_packages = True
-                    #else:
-                     #   self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
-                      #  return None
-
-
+                # except urllib2.HTTPError,e:
+                #   if e.getcode() == 400:
+                #      log.info('CKAN instance %s does not suport revision filtering' % base_url)
+                #     get_all_packages = True
+                # else:
+                #   self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
+                #  return None
 
         if get_all_packages:
             # Request all remote packages
             url = base_rest_url + '/package'
-	    if 'http://data.noe.gv.at' in url:
-		url='http://data.noe.gv.at/api/search'
+            if 'http://data.noe.gv.at' in url:
+                url = 'http://data.noe.gv.at/api/search'
             try:
                 content = self._get_content(url)
-            except Exception,e:
-                self._save_gather_error('Unable to get content for URL: %s: %s' % (url, str(e)),harvest_job)
+            except Exception as e:
+                self._save_gather_error(
+                    'Unable to get content for URL: %s: %s' %
+                    (url, str(e)), harvest_job)
                 return None
 
             package_ids = json.loads(content)
@@ -219,190 +221,221 @@ class CKANHarvester(HarvesterBase):
             if len(package_ids):
                 for package_id in package_ids:
                     # Create a new HarvestObject for this identifier
-                    obj = HarvestObject(guid = package_id, job = harvest_job)
+                    obj = HarvestObject(guid=package_id, job=harvest_job)
                     obj.save()
                     object_ids.append(obj.id)
 
                 return object_ids
 
             else:
-               self._save_gather_error('No packages received for URL: %s' % url,
-                       harvest_job)
-               return None
-        except Exception, e:
-            self._save_gather_error('%r'%e.message,harvest_job)
+                self._save_gather_error(
+                    'No packages received for URL: %s' %
+                    url, harvest_job)
+                return None
+        except Exception as e:
+            self._save_gather_error('%r' % e.message, harvest_job)
 
-
-    def fetch_stage(self,harvest_object):
+    def fetch_stage(self, harvest_object):
         log.debug('In CKANHarvester fetch_stage')
         self._set_config(harvest_object.job.source.config)
 
         # Get source URL
         url = harvest_object.source.url.rstrip('/')
-	text_file = open(str(ckan_harvester_error_log), "a")
-	print(url)
-	#-- Connect to mongoDb:
-	
+        text_file = open(str(ckan_harvester_error_log), "a")
+        print(url)
+        #-- Connect to mongoDb:
 
-
-	db1=db.odm
-	db_jobs=db.jobs
+        db1 = db.odm
+        db_jobs = db.jobs
         url = url + self._get_rest_api_offset() + '/package/' + harvest_object.guid
-	if 'http://data.noe.gv.at' in url:
-		url='http://data.noe.gv.at/api/json/'+harvest_object.guid
+        if 'http://data.noe.gv.at' in url:
+            url = 'http://data.noe.gv.at/api/json/' + harvest_object.guid
         # Get contents
-        #print(str(datetime.datetime.now())+"try to get content")	
+        #print(str(datetime.datetime.now())+"try to get content")
         try:
             content = self._get_content(url)
-        except Exception,e:
-            self._save_object_error('Unable to get content for package: %s: %r' % \
-                                        (url, e),harvest_object)
+        except Exception as e:
+            self._save_object_error(
+                'Unable to get content for package: %s: %r' %
+                (url, e), harvest_object)
             return None
-
 
         #print(str(datetime.datetime.now())+"got content")
         # Save the fetched contents in the HarvestObject
         harvest_object.content = content
-	try:
-        	harvest_object.save()
-	except:
-		pass
+        try:
+            harvest_object.save()
+        except:
+            pass
         #print(str(datetime.datetime.now())+"try to store")
-	#TRANSFORMATIONS TO JSON FOR MongoDB
-	try:
-		content=json.loads(content)
-		base_url = harvest_object.source.url
-		try:
-		  doc=db_jobs.find_one({"cat_url":str(base_url)})
-		  language=doc['language']
-		  content['extras'].update({"language":language})
-		except:
-		  pass
-	
-		content.update({"catalogue_url":str(base_url)})
-		content.update({"platform":"ckan"})
-		metadata_created=datetime.datetime.now()
-		content.update({"metadata_created":str(metadata_created)})
-		content.update({"metadata_modified":str(metadata_created)})
-		content1=str(content)
-		content2=content1.replace("null",'""').replace("true","'true'").replace("false","'false'").replace('""""','""')
-		content3="content4="+content2
+        # TRANSFORMATIONS TO JSON FOR MongoDB
+        try:
+            content = json.loads(content)
+            base_url = harvest_object.source.url
+            try:
+                doc = db_jobs.find_one({"cat_url": str(base_url)})
+                language = doc['language']
+                content['extras'].update({"language": language})
+            except:
+                pass
 
-		#-- STORE to Mongodb
-		try:
-			exec(content3)
-			try:
-				for key, value in content4['extras'].iteritems():
-					 if '.' in key:
-						 temp=key.replace('.','_')
-						 content4['extras'][temp]=value
-						 del content4['extras'][key]
-				l=0
-				while l<len(content4['resources']):
-					for key, value in content4['resources'][l].iteritems():
-						 if '.' in key:
-							 temp=key.replace('.','_')
-							 content4['resources'][temp]=value
-							 del content4['resources'][key]
-					l+=1
-				document=db1.find_one({"id":content4['id'],"catalogue_url":content4['catalogue_url']})
-				if document==None:
-				  db1.save(content4)
-				  log.info('Metadata stored succesfully to MongoDb.')
-				else:
-					  	
-						  met_created=document['metadata_created']
-						  content4.update({'metadata_created':met_created})
-						  content4.update({'metadata_updated':str(datetime.datetime.now())})
-						  content4.update({'updated_dataset':True})
-						  db1.remove({"id":content4['id'],"catalogue_url":content4['catalogue_url']})
-						  db1.save(content4)
-						  log.info('Metadata updated succesfully to MongoDb.')
-	
-			except :
-				try:
-					document=db1.find_one({"id":content4['id'],"catalogue_url":content4['catalogue_url']})
-					if document==None:
-					  db1.save(content4)
-					  log.info('Metadata stored succesfully to MongoDb.')
-					else:
-						  met_created=document['metadata_created']
-						  content4.update({'metadata_created':met_created})
-						  content4.update({'metadata_updated':str(datetime.datetime.now())})
-						  content4.update({'updated_dataset':True})
-						  db1.remove({"id":content4['id'],"catalogue_url":content4['catalogue_url']})
-						  db1.save(content4)
-						  log.info('Metadata updated succesfully to MongoDb.')
+            content.update({"catalogue_url": str(base_url)})
+            content.update({"platform": "ckan"})
+            metadata_created = datetime.datetime.now()
+            content.update({"metadata_created": str(metadata_created)})
+            content.update({"metadata_modified": str(metadata_created)})
+            content1 = str(content)
+            content2 = content1.replace(
+                "null",
+                '""').replace(
+                "true",
+                "'true'").replace(
+                "false",
+                "'false'").replace(
+                '""""',
+                '""')
+            content3 = "content4=" + content2
 
-				except:
-					pass
-		except SyntaxError:
-			content5="content6="+content1.replace("null",'""').replace('""""','""')
-			try:
-				exec(content5)
-				#text_file.write("Syntax Error")
-				document=db1.find_one({"id":content6['id'],"catalogue_url":content6['catalogue_url']})
-				if document==None:
-				  db1.save(content6)
-				  log.info('Metadata stored succesfully to MongoDb.')
-				else:
+            #-- STORE to Mongodb
+            try:
+                exec(content3)
+                try:
+                    for key, value in content4['extras'].iteritems():
+                        if '.' in key:
+                            temp = key.replace('.', '_')
+                            content4['extras'][temp] = value
+                            del content4['extras'][key]
+                    l = 0
+                    while l < len(content4['resources']):
+                        for key, value in content4['resources'][l].iteritems():
+                            if '.' in key:
+                                temp = key.replace('.', '_')
+                                content4['resources'][temp] = value
+                                del content4['resources'][key]
+                        l += 1
+                    document = db1.find_one(
+                        {"id": content4['id'], "catalogue_url": content4['catalogue_url']})
+                    if document is None:
+                        db1.save(content4)
+                        log.info('Metadata stored succesfully to MongoDb.')
+                    else:
 
-						  met_created=document['metadata_created']
-						  content6.update({'metadata_created':met_created})
-						  content6.update({'metadata_updated':str(datetime.datetime.now())})
-						  content6.update({'updated_dataset':True})
-						  db1.remove({"id":content6['id'],"catalogue_url":content6['catalogue_url']})
-						  db1.save(content6)
-						  log.info('Metadata updated succesfully to MongoDb.')
+                        met_created = document['metadata_created']
+                        content4.update({'metadata_created': met_created})
+                        content4.update(
+                            {'metadata_updated': str(datetime.datetime.now())})
+                        content4.update({'updated_dataset': True})
+                        db1.remove(
+                            {"id": content4['id'], "catalogue_url": content4['catalogue_url']})
+                        db1.save(content4)
+                        log.info('Metadata updated succesfully to MongoDb.')
 
-			except SyntaxError:
-				try:
-					content5="content6="+content1.replace("null",'""').replace('""""','""').replace('1.0','"1.0"').replace('2.0','"2.0"').replace('3.0','"3.0"').replace('4.0','"4.0"').replace('5.0','"5.0"')
-					exec(content5)
-		#	text_file.write("Syntax Error")
-					for key, value in content6['extras'].iteritems():
-					    if '.' in key:
-						 temp=key.replace('.','_')
-						 content6['extras'][temp]=value
-						 del content6['extras'][key]
-					l=0
-					while l<len(content4['resources']):
-						for key, value in content6['resources'][l].iteritems():
-							 if '.' in key:
-								 temp=key.replace('.','_')
-								 content6['resources'][temp]=value
-								 del content6['resources'][key]
-						l+=1
-					document=db1.find_one({"id":content6['id'],"catalogue_url":content6['catalogue_url']})
-					if document==None:
-					  db1.save(content6)
-					  log.info('Metadata stored succesfully to MongoDb.')
-					else:
+                except:
+                    try:
+                        document = db1.find_one(
+                            {"id": content4['id'], "catalogue_url": content4['catalogue_url']})
+                        if document is None:
+                            db1.save(content4)
+                            log.info('Metadata stored succesfully to MongoDb.')
+                        else:
+                            met_created = document['metadata_created']
+                            content4.update({'metadata_created': met_created})
+                            content4.update(
+                                {'metadata_updated': str(datetime.datetime.now())})
+                            content4.update({'updated_dataset': True})
+                            db1.remove(
+                                {"id": content4['id'], "catalogue_url": content4['catalogue_url']})
+                            db1.save(content4)
+                            log.info(
+                                'Metadata updated succesfully to MongoDb.')
 
-						  met_created=document['metadata_created']
-						  content6.update({'metadata_created':met_created})
-						  content6.update({'metadata_updated':str(datetime.datetime.now())})
-						  content6.update({'updated_dataset':True})
-						  db1.remove({"id":content6['id'],"catalogue_url":content6['catalogue_url']})
-						  db1.save(content6)
-						  log.info('Metadata updated succesfully to MongoDb.')
-				except SyntaxError:
-					text_file.write('Json Error : '+'\n')
-					text_file.write(str(content)+'\n'+'\n')
+                    except:
+                        pass
+            except SyntaxError:
+                content5 = "content6=" + \
+                    content1.replace("null", '""').replace('""""', '""')
+                try:
+                    exec(content5)
+                    #text_file.write("Syntax Error")
+                    document = db1.find_one(
+                        {"id": content6['id'], "catalogue_url": content6['catalogue_url']})
+                    if document is None:
+                        db1.save(content6)
+                        log.info('Metadata stored succesfully to MongoDb.')
+                    else:
 
-	except:pass
-        #print(str(datetime.datetime.now())+"stored")
+                        met_created = document['metadata_created']
+                        content6.update({'metadata_created': met_created})
+                        content6.update(
+                            {'metadata_updated': str(datetime.datetime.now())})
+                        content6.update({'updated_dataset': True})
+                        db1.remove(
+                            {"id": content6['id'], "catalogue_url": content6['catalogue_url']})
+                        db1.save(content6)
+                        log.info('Metadata updated succesfully to MongoDb.')
+
+                except SyntaxError:
+                    try:
+                        content5 = "content6=" + content1.replace(
+                            "null", '""').replace(
+                            '""""', '""').replace(
+                            '1.0', '"1.0"').replace(
+                            '2.0', '"2.0"').replace(
+                            '3.0', '"3.0"').replace(
+                            '4.0', '"4.0"').replace(
+                            '5.0', '"5.0"')
+                        exec(content5)
+            #	text_file.write("Syntax Error")
+                        for key, value in content6['extras'].iteritems():
+                            if '.' in key:
+                                temp = key.replace('.', '_')
+                                content6['extras'][temp] = value
+                                del content6['extras'][key]
+                        l = 0
+                        while l < len(content4['resources']):
+                            for key, value in content6[
+                                    'resources'][l].iteritems():
+                                if '.' in key:
+                                    temp = key.replace('.', '_')
+                                    content6['resources'][temp] = value
+                                    del content6['resources'][key]
+                            l += 1
+                        document = db1.find_one(
+                            {"id": content6['id'], "catalogue_url": content6['catalogue_url']})
+                        if document is None:
+                            db1.save(content6)
+                            log.info('Metadata stored succesfully to MongoDb.')
+                        else:
+
+                            met_created = document['metadata_created']
+                            content6.update({'metadata_created': met_created})
+                            content6.update(
+                                {'metadata_updated': str(datetime.datetime.now())})
+                            content6.update({'updated_dataset': True})
+                            db1.remove(
+                                {"id": content6['id'], "catalogue_url": content6['catalogue_url']})
+                            db1.save(content6)
+                            log.info(
+                                'Metadata updated succesfully to MongoDb.')
+                    except SyntaxError:
+                        text_file.write('Json Error : ' + '\n')
+                        text_file.write(str(content) + '\n' + '\n')
+
+        except:
+            pass
+        # print(str(datetime.datetime.now())+"stored")
         return True
 
-    def import_stage(self,harvest_object):
+    def import_stage(self, harvest_object):
         log.debug('In CKANHarvester import_stage')
         if not harvest_object:
             log.error('No harvest object received')
             return False
 
         if harvest_object.content is None:
-            self._save_object_error('Empty content for object %s' % harvest_object.id,
-                    harvest_object, 'Import')
+            self._save_object_error(
+                'Empty content for object %s' %
+                harvest_object.id, harvest_object, 'Import')
             return False
 
         self._set_config(harvest_object.job.source.config)
@@ -410,17 +443,17 @@ class CKANHarvester(HarvesterBase):
         try:
             package_dict = json.loads(harvest_object.content)
 
-
             if package_dict.get('type') == 'harvest':
                 log.warn('Remote dataset is a harvest source, ignoring...')
                 return True
 
             # Set default tags if needed
-            default_tags = self.config.get('default_tags',[])
+            default_tags = self.config.get('default_tags', [])
             if default_tags:
                 if not 'tags' in package_dict:
                     package_dict['tags'] = []
-                package_dict['tags'].extend([t for t in default_tags if t not in package_dict['tags']])
+                package_dict['tags'].extend(
+                    [t for t in default_tags if t not in package_dict['tags']])
 
             remote_groups = self.config.get('remote_groups', None)
             if not remote_groups in ('only_local', 'create'):
@@ -432,7 +465,10 @@ class CKANHarvester(HarvesterBase):
 
                 # check if remote groups exist locally, otherwise remove
                 validated_groups = []
-                context = {'model': model, 'session': Session, 'user': 'harvest'}
+                context = {
+                    'model': model,
+                    'session': Session,
+                    'user': 'harvest'}
 
                 for group_name in package_dict['groups']:
                     try:
@@ -442,19 +478,31 @@ class CKANHarvester(HarvesterBase):
                             validated_groups.append(group['name'])
                         else:
                             validated_groups.append(group['id'])
-                    except NotFound, e:
+                    except NotFound as e:
                         log.info('Group %s is not available' % group_name)
                         if remote_groups == 'create':
                             try:
-                                group = self._get_group(harvest_object.source.url, group_name)
+                                group = self._get_group(
+                                    harvest_object.source.url, group_name)
                             except:
-                                log.error('Could not get remote group %s' % group_name)
+                                log.error(
+                                    'Could not get remote group %s' %
+                                    group_name)
                                 continue
 
-                            for key in ['packages', 'created', 'users', 'groups', 'tags', 'extras', 'display_name']:
+                            for key in [
+                                    'packages',
+                                    'created',
+                                    'users',
+                                    'groups',
+                                    'tags',
+                                    'extras',
+                                    'display_name']:
                                 group.pop(key, None)
                             get_action('group_create')(context, group)
-                            log.info('Group %s has been newly created' % group_name)
+                            log.info(
+                                'Group %s has been newly created' %
+                                group_name)
                             if self.api_version == 1:
                                 validated_groups.append(group['name'])
                             else:
@@ -465,7 +513,8 @@ class CKANHarvester(HarvesterBase):
             context = {'model': model, 'session': Session, 'user': 'harvest'}
 
             # Local harvest source organization
-            source_dataset = get_action('package_show')(context, {'id': harvest_object.source.id})
+            source_dataset = get_action('package_show')(
+                context, {'id': harvest_object.source.id})
             local_org = source_dataset.get('owner_org')
 
             remote_orgs = self.config.get('remote_orgs', None)
@@ -484,27 +533,44 @@ class CKANHarvester(HarvesterBase):
                 if remote_org:
                     try:
                         data_dict = {'id': remote_org}
-                        org = get_action('organization_show')(context, data_dict)
+                        org = get_action('organization_show')(
+                            context, data_dict)
                         validated_org = org['id']
-                    except NotFound, e:
-                        log.info('Organization %s is not available' % remote_org)
+                    except NotFound as e:
+                        log.info(
+                            'Organization %s is not available' %
+                            remote_org)
                         if remote_orgs == 'create':
                             try:
-                                org = self._get_group(harvest_object.source.url, remote_org)
-                                for key in ['packages', 'created', 'users', 'groups', 'tags', 'extras', 'display_name', 'type']:
+                                org = self._get_group(
+                                    harvest_object.source.url, remote_org)
+                                for key in [
+                                        'packages',
+                                        'created',
+                                        'users',
+                                        'groups',
+                                        'tags',
+                                        'extras',
+                                        'display_name',
+                                        'type']:
                                     org.pop(key, None)
                                 get_action('organization_create')(context, org)
-                                log.info('Organization %s has been newly created' % remote_org)
+                                log.info(
+                                    'Organization %s has been newly created' %
+                                    remote_org)
                                 validated_org = org['id']
                             except:
-                                log.error('Could not get remote org %s' % remote_org)
+                                log.error(
+                                    'Could not get remote org %s' %
+                                    remote_org)
 
                 package_dict['owner_org'] = validated_org or local_org
 
             # Set default groups if needed
             default_groups = self.config.get('default_groups', [])
             if default_groups:
-                package_dict['groups'].extend([g for g in default_groups if g not in package_dict['groups']])
+                package_dict['groups'].extend(
+                    [g for g in default_groups if g not in package_dict['groups']])
 
             # Find any extras whose values are not strings and try to convert
             # them to strings, as non-string extras are not allowed anymore in
@@ -513,27 +579,28 @@ class CKANHarvester(HarvesterBase):
                 if not isinstance(package_dict['extras'][key], basestring):
                     try:
                         package_dict['extras'][key] = json.dumps(
-                                package_dict['extras'][key])
+                            package_dict['extras'][key])
                     except TypeError:
                         # If converting to a string fails, just delete it.
                         del package_dict['extras'][key]
 
             # Set default extras if needed
-            default_extras = self.config.get('default_extras',{})
+            default_extras = self.config.get('default_extras', {})
             if default_extras:
-                override_extras = self.config.get('override_extras',False)
+                override_extras = self.config.get('override_extras', False)
                 if not 'extras' in package_dict:
                     package_dict['extras'] = {}
-                for key,value in default_extras.iteritems():
+                for key, value in default_extras.iteritems():
                     if not key in package_dict['extras'] or override_extras:
                         # Look for replacement strings
-                        if isinstance(value,basestring):
-                            value = value.format(harvest_source_id=harvest_object.job.source.id,
-                                     harvest_source_url=harvest_object.job.source.url.strip('/'),
-                                     harvest_source_title=harvest_object.job.source.title,
-                                     harvest_job_id=harvest_object.job.id,
-                                     harvest_object_id=harvest_object.id,
-                                     dataset_id=package_dict['id'])
+                        if isinstance(value, basestring):
+                            value = value.format(
+                                harvest_source_id=harvest_object.job.source.id,
+                                harvest_source_url=harvest_object.job.source.url.strip('/'),
+                                harvest_source_title=harvest_object.job.source.title,
+                                harvest_job_id=harvest_object.job.id,
+                                harvest_object_id=harvest_object.id,
+                                dataset_id=package_dict['id'])
 
                         package_dict['extras'][key] = value
 
@@ -542,9 +609,10 @@ class CKANHarvester(HarvesterBase):
             for resource in package_dict.get('resources', []):
                 resource.pop('url_type', None)
 
-            result = self._create_or_update_package(package_dict,harvest_object)
+            result = self._create_or_update_package(
+                package_dict, harvest_object)
 
-            if result and self.config.get('read_only',False) == True:
+            if result and self.config.get('read_only', False) == True:
 
                 package = model.Package.get(package_dict['id'])
 
@@ -552,21 +620,21 @@ class CKANHarvester(HarvesterBase):
                 model.clear_user_roles(package)
 
                 # Setup harvest user as admin
-                user_name = self.config.get('user',u'harvest')
+                user_name = self.config.get('user', u'harvest')
                 user = model.User.get(user_name)
-                pkg_role = model.PackageRole(package=package, user=user, role=model.Role.ADMIN)
+                pkg_role = model.PackageRole(
+                    package=package, user=user, role=model.Role.ADMIN)
 
                 # Other users can only read
-                for user_name in (u'visitor',u'logged_in'):
+                for user_name in (u'visitor', u'logged_in'):
                     user = model.User.get(user_name)
-                    pkg_role = model.PackageRole(package=package, user=user, role=model.Role.READER)
-
+                    pkg_role = model.PackageRole(
+                        package=package, user=user, role=model.Role.READER)
 
             return True
-        except ValidationError,e:
-            self._save_object_error('Invalid package with GUID %s: %r' % (harvest_object.guid, e.error_dict),
-                    harvest_object, 'Import')
-        except Exception, e:
-            self._save_object_error('%r'%e,harvest_object,'Import')
-
-
+        except ValidationError as e:
+            self._save_object_error(
+                'Invalid package with GUID %s: %r' %
+                (harvest_object.guid, e.error_dict), harvest_object, 'Import')
+        except Exception as e:
+            self._save_object_error('%r' % e, harvest_object, 'Import')

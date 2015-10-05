@@ -15,20 +15,24 @@ from ckanext.harvestodm.plugin import DATASET_TYPE_NAME
 
 
 try:
-    from collections import OrderedDict # 2.7
+    from collections import OrderedDict  # 2.7
 except ImportError:
     from sqlalchemy.util import OrderedDict
 
 log = logging.getLogger(__name__)
 
+
 class OrganizationController(GroupController):
 
     def source_list(self, id, limit=20):
         self.group_type = 'organization'
-        context = {'model': model, 'session': model.Session,
-                   'user': c.user or c.author,
-                   'schema': self._db_to_form_schema(group_type=self.group_type),
-                   'for_view': True}
+        context = {
+            'model': model,
+            'session': model.Session,
+            'user': c.user or c.author,
+            'schema': self._db_to_form_schema(
+                group_type=self.group_type),
+            'for_view': True}
         data_dict = {'id': id}
 
         # unicode format (decoded from utf8)
@@ -48,10 +52,14 @@ class OrganizationController(GroupController):
     def _read(self, id, limit, dataset_type=None):
         ''' This is common code used by both read and bulk_process'''
         self.group_type = 'organization'
-        context = {'model': model, 'session': model.Session,
-                   'user': c.user or c.author,
-                   'schema': self._db_to_form_schema(group_type=self.group_type),
-                   'for_view': True, 'extras_as_string': True}
+        context = {
+            'model': model,
+            'session': model.Session,
+            'user': c.user or c.author,
+            'schema': self._db_to_form_schema(
+                group_type=self.group_type),
+            'for_view': True,
+            'extras_as_string': True}
 
         q = c.q = request.params.get('q', '')
         # Search within group
@@ -62,9 +70,9 @@ class OrganizationController(GroupController):
 
         try:
             description_formatted = ckan.misc.MarkdownFormat().to_html(
-            c.group_dict.get('description', ''))
+                c.group_dict.get('description', ''))
             c.description_formatted = genshi.HTML(description_formatted)
-        except Exception, e:
+        except Exception as e:
             error_msg = "<span class='inline-warning'>%s</span>" %\
                         p.toolkit._("Cannot render description")
             c.description_formatted = genshi.HTML(error_msg)
@@ -77,7 +85,7 @@ class OrganizationController(GroupController):
 
         try:
             page = int(request.params.get('page', 1))
-        except ValueError, e:
+        except ValueError as e:
             abort(400, ('"page" parameter must be an integer'))
 
         # most search operations should reset the page counter:
@@ -101,7 +109,7 @@ class OrganizationController(GroupController):
                                         id=id)
             else:
                 url = self._url_for(controller='group', action='read',
-                                id=id)
+                                    id=id)
             params = [(k, v.encode('utf-8') if isinstance(v, basestring)
                        else str(v)) for k, v in params]
             return url + u'?' + urlencode(params)
@@ -116,8 +124,8 @@ class OrganizationController(GroupController):
 
         def remove_field(key, value=None, replace=None):
             return h.remove_url_param(key, value=value, replace=replace,
-                                  controller='group', action='read',
-                                  extras=dict(id=c.group_dict.get('name')))
+                                      controller='group', action='read',
+                                      extras=dict(id=c.group_dict.get('name')))
 
         c.remove_field = remove_field
 
@@ -149,9 +157,9 @@ class OrganizationController(GroupController):
             facets = OrderedDict()
 
             default_facet_titles = {'groups': p.toolkit._('Groups'),
-                              'tags': p.toolkit._('Tags'),
-                              'res_format': p.toolkit._('Formats'),
-                              'license': p.toolkit._('Licence'), }
+                                    'tags': p.toolkit._('Tags'),
+                                    'res_format': p.toolkit._('Formats'),
+                                    'license': p.toolkit._('Licence'), }
 
             for facet in g.facets:
                 if facet in default_facet_titles:
@@ -159,7 +167,8 @@ class OrganizationController(GroupController):
                 else:
                     facets[facet] = facet
             if dataset_type:
-                fq = fq + 'dataset_type:"{dataset_type}"'.format(dataset_type=dataset_type)
+                fq = fq + \
+                    'dataset_type:"{dataset_type}"'.format(dataset_type=dataset_type)
 
             # Facet titles
             for plugin in p.PluginImplementations(p.IFacets):
@@ -170,7 +179,8 @@ class OrganizationController(GroupController):
                     facets = plugin.group_facets(
                         facets, self.group_type, dataset_type)
 
-            if 'capacity' in facets and (self.group_type != 'organization' or not user_member_of_orgs):
+            if 'capacity' in facets and (
+                    self.group_type != 'organization' or not user_member_of_orgs):
                 del facets['capacity']
 
             c.facet_titles = facets
@@ -197,8 +207,8 @@ class OrganizationController(GroupController):
 
             c.facets = query['facets']
             maintain.deprecate_context_item(
-              'facets',
-              'Use `c.search_facets` instead.')
+                'facets',
+                'Use `c.search_facets` instead.')
 
             c.search_facets = query['search_facets']
             c.search_facets_limits = {}
@@ -209,7 +219,7 @@ class OrganizationController(GroupController):
 
             c.sort_by_selected = sort_by
 
-        except search.SearchError, se:
+        except search.SearchError as se:
             log.error('Group search error: %r', se.args)
             c.query_error = True
             c.facets = {}
